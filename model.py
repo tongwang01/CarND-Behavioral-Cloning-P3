@@ -118,6 +118,11 @@ def main(data_dirs, model_dir, epochs=10):
     model = build_model()
 
     # Train model
+    try:
+        os.mkdir(os.path.join("./", model_dir))
+    except:
+        pass
+
     steps_per_epoch = np.ceil(len(train_samples) / 32)
     validation_steps = np.ceil(len(validation_samples) / 32)
 
@@ -130,10 +135,6 @@ def main(data_dirs, model_dir, epochs=10):
                                        model_dir=model_dir)
 
     # Save model
-    try:
-        os.mkdir(os.path.join("./", model_dir))
-    except:
-        pass
     model.save(os.path.join("./", model_dir, "model.h5"))
 
     # Save history plot
