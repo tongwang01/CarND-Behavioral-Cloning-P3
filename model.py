@@ -81,6 +81,7 @@ def train_model(model,
                 validation_generator,
                 steps_per_epoch,
                 validation_steps,
+                model_dir,
                 epochs=10):
     """Trains a model.
     """
