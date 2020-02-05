@@ -42,11 +42,8 @@ def generator(samples, batch_size=32):
             yield sklearn.utils.shuffle(X_train, y_train)
 
 
-def build_model():
-    """Builds a neutral net model.
-
-    Returns:
-        model: a keras model object
+def vgg_model():
+    """Builds a VGG model.
     """
     model = Sequential()
     # Normalize
@@ -76,6 +73,29 @@ def build_model():
     return model
 
 
+def nvidia_model():
+    """Builds a nvidia model.
+    """
+    model = Sequential()
+
+    model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160, 320, 3)))
+    model.add(Cropping2D(cropping=((50, 20), (0, 0))))
+
+    model.add(Convolution2D(24,5,5, subsample=(2,2), activation='relu'))
+    model.add(Convolution2D(36,5,5, subsample=(2,2), activation='relu'))
+    model.add(Convolution2D(48,5,5, subsample=(2,2), activation='relu'))
+    model.add(Convolution2D(64,3,3, activation='relu'))
+    model.add(Convolution2D(64,3,3, activation='relu'))
+    model.add(Flatten())
+    model.add(Dense(100))
+    model.add(Dense(50))
+    model.add(Dense(10))
+    model.add(Dense(1))
+    model.compile(loss='mean_squared_error', optimizer="adam")
+
+    return model
+
+
 def train_model(model,
                 train_generator,
                 validation_generator,
@@ -98,7 +118,7 @@ def train_model(model,
     return model, model_history
 
 
-def main(data_dirs, model_dir, epochs=10):
+def main(data_dirs, model_dir, model="nvidia", epochs=10):
     # Read in driving log files
     samples = []
     for f in data_dirs:
@@ -115,7 +135,10 @@ def main(data_dirs, model_dir, epochs=10):
     validation_generator = generator(validation_samples)
 
     # Build model
-    model = build_model()
+    if model == "vgg":
+        model = vgg_model()
+    elif model == "nvidia":
+        model = nvidia_model()
 
     # Train model
     try:
@@ -153,10 +176,14 @@ if __name__ == '__main__':
     ap.add_argument("--data_dirs", required=False, action="append")
     ap.add_argument("--model_dir", required=True)
     ap.add_argument("--epochs", required=False, type=int)
+    ap.add_argument("--model", required=False, type=str)
     args = vars(ap.parse_args())
     data_dirs = args["data_dirs"]
     model_dir = args["model_dir"]
     epochs = args["epochs"]
+    model = args["model"]
+
+    model_dir = model + "_" + model_dir
 
     print(data_dirs)
     print(args)
@@ -168,4 +195,4 @@ if __name__ == '__main__':
     else:
         print("Using the following data: ", data_dirs)
 
-    main(data_dirs, model_dir, epochs)
+    main(data_dirs, model_dir, model, epochs)
