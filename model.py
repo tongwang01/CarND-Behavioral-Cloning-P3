@@ -12,7 +12,7 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D, Cropping2D, Lambda
 
 
-def generator(samples, batch_size=32):
+def generator(samples, is_validation=False, correction=0.15, batch_size=32):
     """Generates batches of training features and labels.
 
     Args
@@ -26,6 +26,7 @@ def generator(samples, batch_size=32):
             batch_samples = samples[offset:offset + batch_size]
             images = []
             angles = []
+
             for batch_sample in batch_samples:
                 f = batch_sample[-1]
                 original_name = batch_sample[0]
@@ -34,9 +35,22 @@ def generator(samples, batch_size=32):
                 center_angle = float(batch_sample[3])
                 images.append(center_image)
                 angles.append(center_angle)
+
                 # Flip the image to augment training data
                 images.append(np.fliplr(center_image))
                 angles.append(-center_angle)
+
+                # Add left & right camera images if it's not validation run
+                if not is_validation:
+                    left_angle = center_angle + correction
+                    right_angle = center_angle - correction
+                    left_image = mpimg.imread(f.replace("driving_log.csv", "") + "IMG/" + batch_sample[1].split("IMG/")[-1])
+                    right_image = mpimg.imread(f.replace("driving_log.csv", "") + "IMG/" + batch_sample[2].split("IMG/")[-1])
+                    images.append(left_image)
+                    angles.append(left_angle)
+                    images.append(right_image)
+                    angles.append(right_angle)
+
             X_train = np.array(images)
             y_train = np.array(angles)
             yield sklearn.utils.shuffle(X_train, y_train)
@@ -46,9 +60,8 @@ def vgg_model():
     """Builds a VGG model.
     """
     model = Sequential()
-    # Normalize
+
     model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160, 320, 3)))
-    # Crop
     model.add(Cropping2D(cropping=((50, 20), (0, 0))))
 
     model.add(Conv2D(32, (3, 3), activation='relu'))
@@ -81,15 +94,17 @@ def nvidia_model():
     model.add(Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(160, 320, 3)))
     model.add(Cropping2D(cropping=((50, 20), (0, 0))))
 
-    model.add(Convolution2D(24,5,5, subsample=(2,2), activation='relu'))
-    model.add(Convolution2D(36,5,5, subsample=(2,2), activation='relu'))
-    model.add(Convolution2D(48,5,5, subsample=(2,2), activation='relu'))
-    model.add(Convolution2D(64,3,3, activation='relu'))
-    model.add(Convolution2D(64,3,3, activation='relu'))
+    model.add(Conv2D(24, (5, 5), strides=(2,2), activation='relu'))
+    model.add(Conv2D(36, (5, 5), strides=(2,2), activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Conv2D(48, (5, 5), strides=(2,2), activation='relu'))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(Conv2D(64, (3, 3), activation='relu'))
+    model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(100))
-    model.add(Dense(50))
-    model.add(Dense(10))
+    model.add(Dense(128))
+    model.add(Dense(64))
+    model.add(Dense(32))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer="adam")
 
@@ -105,9 +120,10 @@ def train_model(model,
                 epochs=10):
     """Trains a model.
     """
-    stopper = keras.callbacks.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=1)
+    stopper = keras.callbacks.callbacks.EarlyStopping(monitor='val_loss',
+                                                      min_delta=0, patience=2, restore_best_weights=True)
     checkpoint = keras.callbacks.callbacks.ModelCheckpoint(
-        filepath=os.path.join("./", model_dir, "model_checkpoint.{epoch:02d}-{val_loss:.2f}.h5"))
+        filepath=os.path.join("./", model_dir, "model_checkpoint.{epoch:02d}-{val_loss:.5f}.h5"))
 
     model_history = model.fit_generator(train_generator,
                                         steps_per_epoch=steps_per_epoch,
@@ -131,8 +147,8 @@ def main(data_dirs, model_dir, model="nvidia", epochs=10):
 
     # Create training and validation generators
     train_samples, validation_samples = train_test_split(samples, test_size=0.2)
-    train_generator = generator(train_samples)
-    validation_generator = generator(validation_samples)
+    train_generator = generator(train_samples, is_validation=False)
+    validation_generator = generator(validation_samples, is_validation=True)
 
     # Build model
     if model == "vgg":
