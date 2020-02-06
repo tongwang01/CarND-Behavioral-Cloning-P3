@@ -23,13 +23,13 @@ Here I will consider the [rubric points](https://review.udacity.com/#!/rubrics/4
 #### 1. Submission includes all required files and can be used to run the simulator in autonomous mode
 
 My project includes the following files:
-* model.py: code to load data, build and train model
-* drive.py: code for driving the car in autonomous mode
+* `model.py`: code to load data, build and train model
+* `drive.py`: code for driving the car in autonomous mode
     * The only changed I've made to the orginal drive.py script was changing the `set_speed` parameter from `9` to `30`, mostly to speed up iteration speed.
-* model.h5: final model 
+* `model.h5`: final model 
     * In addition, in the folder `nvidia_12_working/` there are the checkpoints of this model at each epoch during training.
-* video.mp4: video recording of the car driving track 1 for two laps, using `model.h5`
-* writeup_report.md: write up of this project. You are reading this.
+* `video.mp4`: video recording of the car driving track 1 for two laps, using `model.h5`
+* `writeup_report.md`: write up of this project. You are reading this.
 
 #### 2. Submission includes functional code
 Using the Udacity provided simulator and my drive.py file, the car can be driven autonomously around the track by executing 
