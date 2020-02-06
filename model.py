@@ -102,9 +102,9 @@ def nvidia_model():
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(128))
-    model.add(Dense(64))
-    model.add(Dense(32))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     model.add(Dense(1))
     model.compile(loss='mean_squared_error', optimizer="adam")
 
